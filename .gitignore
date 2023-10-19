@@ -176,3 +176,6 @@ tmp.txt
 *.json
 meta.txt
 vocabulary.txt
+all_assembly.txt
+cbench_arm64_assembly_with_line_no.model
+cbench_arm64_assembly_with_line_no.vocab
