@@ -54,3 +54,4 @@ We need also use LLVM IR to train the cost model.
 ## TODO
 * Read the Tokenizer code
 * Download the Dataset and run the simple demo in `finetune-llama.py`.
+* Refer to this [link](https://github.com/liguodongiot/llm-action/blob/main/train/peft/clm/peft_lora_clm.ipynb) and [this](https://towardsdatascience.com/fine-tune-your-own-llama-2-model-in-a-colab-notebook-df9823a04a32) to fine-tune.
