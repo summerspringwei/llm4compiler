@@ -35,6 +35,7 @@ def build_instruction_dataset(data_path: Union[List[str],str],
             if code2 is not None and code2 !="":
                 instruction = instruction + '\n' + code2
             source = prompt.format_map({'instruction':instruction})
+            
             target = f"{output}{tokenizer.eos_token}"
             sources.append(source)
             targets.append(target)
@@ -48,6 +49,7 @@ def build_instruction_dataset(data_path: Union[List[str],str],
             input_ids = torch.LongTensor(s + t)[:max_seq_length]
             labels = torch.LongTensor([IGNORE_INDEX] * len(s) + t)[:max_seq_length]
             assert len(input_ids) == len(labels)
+            print("input_ids length:", len(input_ids))
             all_input_ids.append(input_ids)
             all_labels.append(labels)
 
