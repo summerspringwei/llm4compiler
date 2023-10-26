@@ -36,7 +36,7 @@ def build_instruction_dataset(data_path: Union[List[str],str],
                 instruction = instruction + '\n' + code2
             source = prompt.format_map({'instruction':instruction})
             
-            target = f"{output}{tokenizer.eos_token}"
+            target = f"{instruction}\n{output}{tokenizer.eos_token}"
             sources.append(source)
             targets.append(target)
 
@@ -48,6 +48,8 @@ def build_instruction_dataset(data_path: Union[List[str],str],
         for s,t in zip(tokenized_sources['input_ids'],tokenized_targets['input_ids']):
             input_ids = torch.LongTensor(s + t)[:max_seq_length]
             labels = torch.LongTensor([IGNORE_INDEX] * len(s) + t)[:max_seq_length]
+            print("max_seq_length:", max_seq_length)
+            print("@"*1000)
             assert len(input_ids) == len(labels)
             print("input_ids length:", len(input_ids))
             all_input_ids.append(input_ids)
@@ -59,6 +61,7 @@ def build_instruction_dataset(data_path: Union[List[str],str],
 
     logging.warning("building dataset...")
     all_datasets = []
+    
 
     if not isinstance(data_path,(list,tuple)):
         data_path = [data_path]
@@ -86,6 +89,7 @@ def build_instruction_dataset(data_path: Union[List[str],str],
         processed_dataset.set_format('torch')
         all_datasets.append(processed_dataset['train'])
     all_datasets = concatenate_datasets(all_datasets)
+    
     return all_datasets
 
 @dataclass

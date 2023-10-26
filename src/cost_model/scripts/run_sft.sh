@@ -19,8 +19,7 @@ validation_file=${script_directory}/../cBench/telecom_adpcm_d/random/llm_trainin
 
 deepspeed_config_file=scripts/ds_zero2_no_offload.json
 
-torchrun --nnodes 1 --nproc_per_node 2 run_clm_sft_with_peft.py \
-    --deepspeed ${deepspeed_config_file} \
+torchrun --nnodes 1 --nproc_per_node 1 run_clm_sft_with_peft.py \
     --model_name_or_path ${pretrained_model} \
     --tokenizer_name_or_path ${chinese_tokenizer_path} \
     --dataset_dir ${dataset_dir} \
@@ -30,7 +29,6 @@ torchrun --nnodes 1 --nproc_per_node 2 run_clm_sft_with_peft.py \
     --do_train \
     --do_eval \
     --seed $RANDOM \
-    --fp16 \
     --num_train_epochs 1 \
     --lr_scheduler_type cosine \
     --learning_rate ${lr} \
@@ -55,7 +53,7 @@ torchrun --nnodes 1 --nproc_per_node 2 run_clm_sft_with_peft.py \
     --trainable ${lora_trainable} \
     --modules_to_save ${modules_to_save} \
     --lora_dropout ${lora_dropout} \
-    --torch_dtype float32 \
+    --torch_dtype bfloat16 \
     --validation_file ${validation_file} \
     --gradient_checkpointing \
-    --ddp_find_unused_parameters False
+    --ddp_find_unused_parameters False | tee train.log 2>&1
