@@ -19,6 +19,35 @@ How to generate training data:
 python3 extract_pass_seq_by_latency.py
 ```
 
+## Merge all the assembly code to one file
+```shell
+python3 merge_all_file.py
+```
+This would merge all the assembly file into one large txt file named `all_assembly.txt`.
+
+## Use google's sentencepiece to build the vocabulary
+```shell
+bash scripts/run_sentencepiece.sh all_assembly.txt
+```
+This will produce two files:
+`xxx.model` and `xxx.vocab`.
+
+## Merge the vocabulary
+Then we need to merge the vocabulary produced by sentencepiece with CodeLamma's vocabulary
+```shell
+python3 merge_tokenizers.py
+```
+
+## Test the length of the tokenizer
+```shell
+python3 run_demo_codellama.py
+```
+
+## Train sft with LoRA
+```shell
+bash scripts/run_sft.sh
+```
+
 ## Large Language Model for Performance Cost Model
 This sub-directory is developed for building performance code by using Large Language Model (LLM).
 

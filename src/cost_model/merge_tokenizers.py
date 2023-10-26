@@ -58,7 +58,6 @@ tokenizer = CodeLlamaTokenizer(vocab_file=output_sp_dir+'/cbench_ir_llama.model'
 tokenizer.save_pretrained(output_hf_dir)
 print(f"Chinese-LLaMA tokenizer has been saved to {output_hf_dir}")
 
-
 # Test
 llama_tokenizer = CodeLlamaTokenizer.from_pretrained(llama_tokenizer_dir)
 chinese_llama_tokenizer = CodeLlamaTokenizer.from_pretrained(output_hf_dir)

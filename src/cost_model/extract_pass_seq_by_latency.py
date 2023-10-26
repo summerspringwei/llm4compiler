@@ -78,52 +78,37 @@ def disassembly_binary(binary_path: str, output_dir: str):
     return os.system(f"llvm-objdump -d --no-addresses --no-show-raw-insn {binary_path} > {output_dir}")
 
 
-def get_record_list_assembly(record_list: List[Record],
-                             from_all_binary_dir: str, to_all_binary_dir: str) -> List[Record]:
-    new_record_list = []
-    for record in record_list:
-        pass_seq_hash = record.get_pass_seq_hash()
-        from_binary_dir = os.path.join(
-            from_all_binary_dir, "IR-"+pass_seq_hash)
-        to_binary_dir = os.path.join(to_all_binary_dir, "IR-"+pass_seq_hash)
-        if not os.path.exists(to_binary_dir):
-            os.makedirs(to_binary_dir)
-        binary_path = os.path.join(from_binary_dir, "a.out")
-        assembly_path = os.path.join(to_binary_dir, "a.s")
-        status = disassembly_binary(binary_path, assembly_path)
-        if status != 0:
-            logger.warn(f"Disassembly binary {binary_path} failed")
-        # Preprocessing the assembly code
-        with open(assembly_path, 'r') as f:
-            assembly = f.readlines()
-            record.assembly = preprocessing_with_addr(assembly)
-        new_record_list.append(record)
-
-    return new_record_list
+def get_one_record_assembly(record: Record,
+                            from_all_binary_dir: str, to_all_binary_dir: str) -> Record:
+    pass_seq_hash = record.get_pass_seq_hash()
+    from_binary_dir = os.path.join(
+        from_all_binary_dir, "IR-"+pass_seq_hash)
+    to_binary_dir = os.path.join(to_all_binary_dir, "IR-"+pass_seq_hash)
+    if not os.path.exists(to_binary_dir):
+        os.makedirs(to_binary_dir)
+    binary_path = os.path.join(from_binary_dir, "a.out")
+    assembly_path = os.path.join(to_binary_dir, "a.s")
+    
+    status = disassembly_binary(binary_path, assembly_path)
+    if status != 0:
+        logger.warn(f"Disassembly binary {binary_path} failed")
+    # Preprocessing the assembly code
+    with open(assembly_path, 'r') as f:
+        assembly = f.readlines()
+        record.assembly = preprocessing_with_addr(assembly)
+    
+    return record
 
 
 def get_record_list_assembly(record_list: List[Record],
-                             from_all_binary_dir: str, to_all_binary_dir: str) -> List[Record]:
-    new_record_list = []
-    for record in record_list:
-        pass_seq_hash = record.get_pass_seq_hash()
-        from_binary_dir = os.path.join(
-            from_all_binary_dir, "IR-"+pass_seq_hash)
-        to_binary_dir = os.path.join(to_all_binary_dir, "IR-"+pass_seq_hash)
-        if not os.path.exists(to_binary_dir):
-            os.makedirs(to_binary_dir)
-        binary_path = os.path.join(from_binary_dir, "a.out")
-        assembly_path = os.path.join(to_binary_dir, "a.s")
-        status = disassembly_binary(binary_path, assembly_path)
-        if status != 0:
-            logger.warn(f"Disassembly binary {binary_path} failed")
-        # Preprocessing the assembly code
-        with open(assembly_path, 'r') as f:
-            assembly = f.readlines()
-            record.assembly = preprocessing_with_addr(assembly)
-        new_record_list.append(record)
+                             from_all_binary_dir: str, to_all_binary_dir: str, nproc=32) -> List[Record]:
+    from multiprocessing import Pool
+    args = [(x, from_all_binary_dir, to_all_binary_dir) for x in record_list]
+    with Pool(nproc) as p:
+        new_record_list = p.starmap(get_one_record_assembly, args)
 
     return new_record_list
+
 
 
 def construct_llm_training_record(record_list: List[Record],
@@ -180,6 +165,28 @@ def construct_llm_training_record(record_list: List[Record],
         print(f"Construct llm training dataset with {num_record} record")
 
 
+def build_one_benchmark(jiayu_benchmark_dir, benchmark_dir, benchmark_name="bench", sample_sorted_num=100, max_num_record=100):
+    file_name = "result.json"
+    file_path = os.path.join(jiayu_benchmark_dir, file_name)
+    # Sort the record list by latency
+    record_list = sort_record_list(read_jiayu_result_json(file_path))
+    # Draw the latency distribution
+    draw_record_latency_distribution(record_list,
+                                     os.path.join(benchmark_dir, benchmark_name+"_latency_distribution"), benchmark_name)
+    # Draw the sampled latency bars
+    sampled_records = sample_from_sorted_record_list(
+        record_list, sample_sorted_num)
+    draw_record_latency_bars(sampled_records, os.path.join(
+        benchmark_dir, benchmark_name+"_latency_bars"), benchmark_name)
+    # Disassembly the binary
+    sampled_records = get_record_list_assembly(sampled_records,
+                             os.path.join(jiayu_benchmark_dir, "samples"),
+                             os.path.join(benchmark_dir, "samples"))
+    # Construct the training record for llm
+    construct_llm_training_record(sampled_records, max_num_record,
+                                  os.path.join(benchmark_dir, "llm_training_record.json"), performance_eps=0.03)
+
+
 def build_all_benchmark(jiayu_root_dir: str, root_dir: str, sample_sorted_num=100, max_num_record=100):
     items = os.listdir(jiayu_root_dir)
     # Filter out only the directories from the list
@@ -196,32 +203,10 @@ def build_all_benchmark(jiayu_root_dir: str, root_dir: str, sample_sorted_num=10
         logger.info(f"Processed benchmark {item}")
 
 
-def build_one_benchmark(jiayu_benchmark_dir, benchmark_dir, benchmark_name="bench", sample_sorted_num=100, max_num_record=100):
-    file_name = "result.json"
-    file_path = os.path.join(jiayu_benchmark_dir, file_name)
-    # Sort the record list by latency
-    record_list = sort_record_list(read_jiayu_result_json(file_path))
-    # Draw the latency distribution
-    draw_record_latency_distribution(record_list,
-                                     os.path.join(benchmark_dir, benchmark_name+"_latency_distribution"), benchmark_name)
-    # Draw the sampled latency bars
-    sampled_records = sample_from_sorted_record_list(
-        record_list, sample_sorted_num)
-    draw_record_latency_bars(sampled_records, os.path.join(
-        benchmark_dir, benchmark_name+"_latency_bars"), benchmark_name)
-    # Disassembly the binary
-    get_record_list_assembly(sampled_records,
-                             os.path.join(jiayu_benchmark_dir, "samples"),
-                             os.path.join(benchmark_dir, "samples"))
-    # Construct the training record for llm
-    construct_llm_training_record(sampled_records, max_num_record,
-                                  os.path.join(benchmark_dir, "llm_training_record.json"), performance_eps=0.03)
-
-
 if __name__ == "__main__":
-    build_one_benchmark("/home/jiayu/result_llvmtunerv3/cBench/automotive_bitcount/random/",
-                        "/home/xiachunwei/Projects/llm4compiler/src/cost_model/cBench/automotive_bitcount/random/")
+    # build_one_benchmark("/home/jiayu/result_llvmtunerv3/cBench/automotive_bitcount/random/",
+    #                     "/home/xiachunwei/Projects/llm4compiler/src/cost_model/cBench/automotive_bitcount/random/")
     dump_vocabulary(
         "/home/xiachunwei/Projects/llm4compiler/src/cost_model/cBench/vocabulary.txt")
-    # build_all_benchmark("/home/jiayu/result_llvmtunerv3/cBench/",
-    #                     "./cBench/", sample_sorted_num=1000, max_num_record=500)
+    build_all_benchmark("/home/jiayu/result_llvmtunerv3/cBench/",
+                        "./cBench/", sample_sorted_num=1000, max_num_record=500)
