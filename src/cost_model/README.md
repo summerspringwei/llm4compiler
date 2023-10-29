@@ -81,6 +81,10 @@ The good thing to use LLVM IR is that it is more close to the program and it's s
 We need also use LLVM IR to train the cost model.
 
 ## TODO
+Use grpc so we can load the model and tokenizer once,
+and run multiple inference
+
+## TODO
 * Read the Tokenizer code
 * Download the Dataset and run the simple demo in `finetune-llama.py`.
 * Refer to this [link](https://github.com/liguodongiot/llm-action/blob/main/train/peft/clm/peft_lora_clm.ipynb) and [this](https://towardsdatascience.com/fine-tune-your-own-llama-2-model-in-a-colab-notebook-df9823a04a32) to fine-tune.

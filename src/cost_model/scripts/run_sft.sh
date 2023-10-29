@@ -7,7 +7,8 @@ lora_dropout=0.05
 
 script_directory="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-pretrained_model=/data/xiachunwei/Dataset/codellama/CodeLlama-7b-hf
+pretrained_model=/home/xiachunwei/Dataset/CodeLlama-7b-hf
+# pretrained_model=/data/xiachunwei/Dataset/codellama/CodeLlama-7b-hf
 # pretrained_model=/home/xiachunwei/Dataset/CodeLlama-7b-hf
 chinese_tokenizer_path=${script_directory}/../llama_data/cbench_wo_line_no/merged_tokenizer_hf/
 # dataset_dir=${script_directory}/../cBench/telecom_adpcm_d/random/
