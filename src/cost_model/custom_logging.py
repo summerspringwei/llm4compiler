@@ -2,7 +2,7 @@
 import logging
 def get_custom_logger():
     # Create a logger
-    logger = logging.getLogger('ll2compiler')
+    logger = logging.getLogger('llm4compiler')
     logger.setLevel(logging.DEBUG)
 
     # Create a custom formatter

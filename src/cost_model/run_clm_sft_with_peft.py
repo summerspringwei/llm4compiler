@@ -212,7 +212,8 @@ def main():
     if len(tokenizer) != embedding_size:
         logger.info("resize the embedding size by the size of the tokenizer")
         model.resize_token_embeddings(len(tokenizer))
-    
+        # Save old model here
+        
     if training_args.peft_path is not None:
         logger.info("Peft from pre-trained model")
         model = PeftModel.from_pretrained(model, training_args.peft_path)
