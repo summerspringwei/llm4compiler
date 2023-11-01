@@ -6,9 +6,12 @@ import torch
 
 
 def test_codellama():
-    pretrained_model = "/data/xiachunwei/Software/codellama/CodeLlama-7b-hf"
+    # pretrained_model = "/data/xiachunwei/Software/codellama/CodeLlama-7b-hf"
+    pretrained_model = "/home/xiachunwei/Dataset/CodeLlama-7b-hf"
     tokenizer = CodeLlamaTokenizer.from_pretrained(pretrained_model)
     model = LlamaForCausalLM.from_pretrained(pretrained_model)
+    for k in model.state_dict().keys():
+        print(k, model.state_dict()[k].shape, model.state_dict()[k].dtype)
     PROMPT = '''def remove_non_ascii(s: str) -> str:
         """ <FILL_ME>
         return result
@@ -65,5 +68,5 @@ if __name__ == "__main__":
     # training_record_file_path = "cBench/consumer_tiffmedian/random/llm_training_record.json"
     # tokenizer_path = "merged_tokenizer_sp/cbench_ir_llama.model"
     # test_token_length(training_record_file_path, tokenizer_path)
-    
-    get_all_benchmark_token_length("cBench", "merged_tokenizer_sp/cbench_ir_llama.model")
+    test_codellama()
+    # get_all_benchmark_token_length("cBench", "merged_tokenizer_sp/cbench_ir_llama.model")

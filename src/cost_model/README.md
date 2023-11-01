@@ -14,39 +14,50 @@ We mainly prepare the data as follows:
 4. Choose the performance gap large than `performance_eps=0.3` as pairs of training record;
 5. Save the training records to json file named `llm_training_record.json`
 
-How to generate training data:
+### How to generate training data:
 ```shell
 python3 extract_pass_seq_by_latency.py
 ```
 
-## Merge all the assembly code to one file
+### Merge all the assembly code to one file
 ```shell
 python3 merge_all_file.py
 ```
 This would merge all the assembly file into one large txt file named `all_assembly.txt`.
 
-## Use google's sentencepiece to build the vocabulary
+### Use google's sentencepiece to build the vocabulary
 ```shell
 bash scripts/run_sentencepiece.sh all_assembly.txt
 ```
 This will produce two files:
 `xxx.model` and `xxx.vocab`.
 
-## Merge the vocabulary
+### Merge the vocabulary
 Then we need to merge the vocabulary produced by sentencepiece with CodeLamma's vocabulary
 ```shell
 python3 merge_tokenizers.py
 ```
 
-## Test the length of the tokenizer
+### Test the length of the tokenizer
 ```shell
 python3 run_demo_codellama.py
 ```
 
-## Train sft with LoRA
+### Train sft with LoRA
 ```shell
 bash scripts/run_sft.sh
 ```
+
+### Run the llm serving and client
+Run the following command to start the llm server:
+```shell
+bash scripts/run_llm_serving.sh
+```
+Run the server to send a request and get a response:
+```shell
+python3 llm_serving/llm_client.py
+```
+
 
 ## Large Language Model for Performance Cost Model
 This sub-directory is developed for building performance code by using Large Language Model (LLM).

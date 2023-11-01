@@ -2,6 +2,9 @@ import sys, os
 import logging
 import torch
 import json
+import copy
+from typing import List
+
 
 from transformers import (
     HfArgumentParser,
@@ -34,6 +37,45 @@ DEFAULT_UNK_TOKEN = "<unk>"
 
 
 logger = logging.getLogger(__name__)
+
+# base_model.model.model.embed_tokens.weight torch.Size([32510, 4096]) torch.float16
+# base_model.model.lm_head.weight torch.Size([32510, 4096]) torch.float16
+# Still need these four weight
+# "base_model.model.model.embed_tokens.original_module.weight", 
+# "base_model.model.model.embed_tokens.modules_to_save.default.weight", 
+# "base_model.model.lm_head.original_module.weight", 
+# "base_model.model.lm_head.modules_to_save.default.weight".
+
+def merge_lora_and_codellama_stat_dict(lora_model_state_dict, codellama_model_state_dict, lora_prfix="default", modules_to_save: List[str]=None):
+    new_state_dict = {}
+    def add_default_prefix(name: str):
+        com = name.split(".")
+        com.insert(-1, lora_prfix)
+        return ".".join(com)
+    
+    for k, v in lora_model_state_dict.items():
+        new_state_dict.update({add_default_prefix(k): v})
+        if modules_to_save is not None:
+            for module_name in modules_to_save:
+                if k.find(module_name) != -1:
+                    original_com = k.split(".")
+                    com = copy.deepcopy(original_com)
+                    com.insert(-1, "original_module")
+                    new_k = ".".join(com)
+                    new_state_dict.update({new_k: v})
+                    com = copy.deepcopy(original_com)
+                    com.insert(-1, "modules_to_save.default")
+                    new_k = ".".join(com)
+                    new_state_dict.update({new_k: v})
+        
+    for k, v in codellama_model_state_dict.items():
+        k = "base_model.model." + k
+        if k not in new_state_dict.keys():
+            new_state_dict.update({k: v})
+    
+    return new_state_dict
+
+
 
 # Setup logging
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",datefmt="%m/%d/%Y %H:%M:%S",
@@ -69,7 +111,7 @@ def get_tokenizer_and_model():
     if tokenizer.pad_token is None:
         print(f"Adding pad token {DEFAULT_PAD_TOKEN}")
         tokenizer.add_special_tokens(dict(pad_token=DEFAULT_PAD_TOKEN))
-    
+    base_model_state_dict = {}
     if model_args.model_name_or_path:
         torch_dtype = (
             model_args.torch_dtype
@@ -82,18 +124,55 @@ def get_tokenizer_and_model():
             torch_dtype=torch_dtype,
             low_cpu_mem_usage=True
         )
+        base_model_state_dict = model.state_dict()
     else:
         logger.error("No model is specified!")
     
-    logger.info(f"len(tokenizer):{len(tokenizer)}")
+    logger.info(f"original len(tokenizer):{len(tokenizer)}")
     embedding_size = model.get_input_embeddings().weight.shape[0]
+    logger.info(f"CodeLlama embedding_size:{embedding_size}")
     if len(tokenizer) != embedding_size:
         logger.info("resize the embedding size by the size of the tokenizer")
         model.resize_token_embeddings(len(tokenizer))
     
     if training_args.peft_path is not None:
-        logger.info("Peft from pre-trained model")
-        model = PeftModel.from_pretrained(model, training_args.peft_path)
+        # logger.info("Peft from pre-trained model")
+        # model = PeftModel.from_pretrained(model, training_args.peft_path)
+        logger.info("Init new peft model")
+        target_modules = training_args.trainable.split(',')
+        modules_to_save = training_args.modules_to_save
+        if modules_to_save is not None:
+            modules_to_save = modules_to_save.split(',')
+        lora_rank = training_args.lora_rank
+        lora_dropout = training_args.lora_dropout
+        lora_alpha = training_args.lora_alpha
+        logger.info(f"target_modules: {target_modules}")
+        logger.info(f"lora_rank: {lora_rank}")
+        peft_config = LoraConfig(
+            task_type=TaskType.CAUSAL_LM,
+            target_modules=target_modules,
+            inference_mode=False,
+            r=lora_rank, lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            modules_to_save=modules_to_save)
+        model = get_peft_model(model, peft_config)
+        # Load from pre-trained state dict
+        peft_state_dict = torch.load(training_args.peft_path)
+        for k in peft_state_dict.keys():
+            logger.info(f"peft_state_dict: {k}, {peft_state_dict[k].shape}, {peft_state_dict[k].dtype}")
+
+        # We manully merge the state dict
+        mergered_state_dict = merge_lora_and_codellama_stat_dict(peft_state_dict, base_model_state_dict, modules_to_save=modules_to_save)
+        model.load_state_dict(mergered_state_dict, strict=False)
+        # base_model.model.model.embed_tokens.weight torch.Size([32510, 4096]) torch.float16
+        # base_model.model.lm_head.weight torch.Size([32510, 4096]) torch.float16
+        # Still need these four weight
+        # "base_model.model.model.embed_tokens.original_module.weight", 
+        # "base_model.model.model.embed_tokens.modules_to_save.default.weight", 
+        # "base_model.model.lm_head.original_module.weight", 
+        # "base_model.model.lm_head.modules_to_save.default.weight".
+        # embedding_size = model.get_input_embeddings().weight.shape[0]
+        # logger.info(f"Peft embedding_size:{embedding_size}")
     else:
         logger.error("No peft model is specified!")
     model.eval()

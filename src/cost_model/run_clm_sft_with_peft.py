@@ -58,8 +58,17 @@ class SavePeftModelCallback(transformers.TrainerCallback):
         return control
     
     def on_train_end(self, args, state, control, **kwargs):
+        # May have bug here
         peft_model_path = os.path.join(args.output_dir, "sft_lora_model")
+        # We save the trained model here for the sake of simplicity
+        # Cannot directly save model, we need to save state_dict instead
+        # torch.save(kwargs["model"], os.path.join(peft_model_path, "sft_lora_adapter_model.pt"))
+        torch.save(kwargs["model"].state_dict(), os.path.join(args.output_dir, "perf_lora_model_state_dict.pt"))
         kwargs["model"].save_pretrained(peft_model_path)
+        print("on_train_end:")
+        print(type(kwargs["model"]))
+        for k in kwargs["model"].state_dict().keys():
+            logger.info(f"{k}: {kwargs['model'].state_dict()[k].shape}")
         kwargs["tokenizer"].save_pretrained(peft_model_path)
     
 
@@ -213,7 +222,7 @@ def main():
         logger.info("resize the embedding size by the size of the tokenizer")
         model.resize_token_embeddings(len(tokenizer))
         # Save old model here
-        
+
     if training_args.peft_path is not None:
         logger.info("Peft from pre-trained model")
         model = PeftModel.from_pretrained(model, training_args.peft_path)
@@ -241,9 +250,18 @@ def main():
     model.print_trainable_parameters()
     logger.info(f"model.modules_to_save: {model.modules_to_save}")
     old_state_dict = model.state_dict
+    logger.info("old_state_dict:")
+    for k, v in old_state_dict().items():
+        logger.info(f"{k}: {v.shape}")
+    logger.info("old_state_dict end")
+
+    logger.info("new_state_dict:")
     model.state_dict = (
         lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
     ).__get__(model, type(model))
+    for k, v in model.state_dict().items():
+        logger.info(f"{k}: {v.shape}")
+    logger.info("new_state_dict end")
 
     # Initialize our Trainer
     trainer = Trainer(
@@ -272,7 +290,9 @@ def main():
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()
-
+    
+    torch.save(old_state_dict(), os.path.join(training_args.output_dir, "codellama_old_state_dict.pt"))
+    # torch.save(model.state_dict(), os.path.join(training_args.output_dir, "perf_model_state_dict.pt"))
     # Evaluation
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
