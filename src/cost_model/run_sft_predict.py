@@ -82,7 +82,7 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s - %(message)s
     level=logging.INFO,  # if training_args.local_rank in [-1, 0] else logging.WARN,
     handlers=[logging.StreamHandler(sys.stdout)],)
 
-def get_tokenizer_and_model():
+def get_sft_tokenizer_and_model():
     parser = HfArgumentParser((ModelArguments, MyTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
@@ -212,7 +212,7 @@ def get_assembly_dataset_record(file_path: str) -> List[str]:
 
 
 def main():
-    tokenizer, model = get_tokenizer_and_model()
+    tokenizer, model = get_sft_tokenizer_and_model()
     test_file_path = "/home/xiachunwei/Dataset/HW-cost-model-dataset/cBench/telecom_adpcm_d/random/llm_training_record.json"
     prompt_list, label_list = get_assembly_dataset_record(test_file_path)
     for prompt, label in zip(prompt_list, label_list):

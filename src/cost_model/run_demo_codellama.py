@@ -33,6 +33,14 @@ def get_tokenizer(file_path: str):
     return tokenizer
 
 
+def get_codellama_tokenizer_and_model(pretrained_model: str):
+    tokenizer = CodeLlamaTokenizer.from_pretrained(pretrained_model)
+    model = LlamaForCausalLM.from_pretrained(pretrained_model)
+    model.eval()
+    model.to(torch.device('cuda:0'))
+    return tokenizer, model
+
+
 def test_token_length(file_path: str, tokenizer_folder_path: str):
     tokenizer = get_tokenizer(tokenizer_folder_path)
     with open(file_path, 'r') as f:

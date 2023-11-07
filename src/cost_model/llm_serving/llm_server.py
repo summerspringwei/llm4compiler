@@ -10,7 +10,9 @@ from transformers import (
 )
 
 import llmserving_pb2, llmserving_pb2_grpc
-from run_sft_predict import get_tokenizer_and_model, run_model_inference
+from run_sft_predict import get_sft_tokenizer_and_model, run_model_inference
+from run_demo_codellama import get_codellama_tokenizer_and_model
+
 from custom_logging import get_custom_logger
 logger = get_custom_logger()
 
@@ -29,8 +31,9 @@ class LlamaServer(llmserving_pb2_grpc.LlmServingServicer):
         return llmserving_pb2.PredictResponse(prediction=output)
 
 
-def serve():
-    tokenizer, model = get_tokenizer_and_model()
+def serve(tokenizer, model):
+    """Given the tokenizer and model, run a LLM service
+    """
     port = "50051"
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     llmserving_pb2_grpc.add_LlmServingServicer_to_server(LlamaServer(tokenizer, model), server)
@@ -40,6 +43,21 @@ def serve():
     server.wait_for_termination()
 
 
+def serve_sft():
+    """Serve the SFT model
+    """
+    tokenizer, model = get_sft_tokenizer_and_model()
+    serve(tokenizer, model)
+
+
+def serve_codellama():
+    """Serve the CodeLlama model
+    """
+    pretrain_model = "/home2/xiachunwei/Dataset/CodeLlama-7b-Instruct-hf"
+    tokenizer, model = get_codellama_tokenizer_and_model(pretrain_model)
+    serve(tokenizer, model)
+
+
 if __name__ == "__main__":
     logging.basicConfig()
-    serve()
+    serve_codellama()

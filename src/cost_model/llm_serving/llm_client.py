@@ -18,6 +18,28 @@ def get_stub(ip: str, port: str) -> llmserving_pb2_grpc.LlmServingStub:
     return stub
 
 
+def read_from_input():
+    lines = []
+    while True:
+        line = input()
+        if line.strip() == "end":
+            break
+        lines.append(line)
+    prompt = "\n".join(lines)
+    print(f"send: {prompt}")
+    return prompt
+
+def run_from_input():
+    with grpc.insecure_channel("127.0.0.1:50051") as channel:
+        stub = llmserving_pb2_grpc.LlmServingStub(channel)
+        while True:
+            prompt = read_from_input()
+            response = stub.Predict(llmserving_pb2.PredictRequest(prompt=prompt))
+            print("Greeter client received: " + response.prediction)
+
+
 if __name__ == "__main__":
     logging.basicConfig()
-    run()
+    # run()
+    run_from_input()
+
