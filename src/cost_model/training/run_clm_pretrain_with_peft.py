@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 from pathlib import Path
 import datasets
+from datasets import load_dataset
 import torch
 
 import transformers
@@ -28,8 +29,8 @@ from transformers.utils.versions import require_version
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
 from peft import LoraConfig, TaskType, get_peft_model, PeftModel, get_peft_model_state_dict
+from data_collator import DataCollatorForLanguageModeling
 
-from preprocessing.build_dataset import build_instruction_dataset, DataCollatorForSupervisedDataset
 from training.sft_args import  (
     ModelArguments, 
     DataTrainingArguments,
@@ -47,10 +48,10 @@ require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/lang
 class SavePeftModelCallback(transformers.TrainerCallback):
     def save_model(self, args, state, kwargs):
         if state.best_model_checkpoint is not None:
-            checkpoint_folder = os.path.join(state.best_model_checkpoint, "sft_lora_model")
+            checkpoint_folder = os.path.join(state.best_model_checkpoint, "pretrain_lora_model")
         else:
             checkpoint_folder = os.path.join(args.output_dir, f"{PREFIX_CHECKPOINT_DIR}-{state.global_step}")
-        peft_model_path = os.path.join(checkpoint_folder, "sft_lora_model")
+        peft_model_path = os.path.join(checkpoint_folder, "pretrain_lora_model")
         kwargs["model"].save_pretrained(peft_model_path)
         kwargs["tokenizer"].save_pretrained(peft_model_path)
     
@@ -60,10 +61,10 @@ class SavePeftModelCallback(transformers.TrainerCallback):
     
     def on_train_end(self, args, state, control, **kwargs):
         # May have bug here
-        peft_model_path = os.path.join(args.output_dir, "sft_lora_model")
+        peft_model_path = os.path.join(args.output_dir, "pretrain_lora_model")
         # We save the trained model here for the sake of simplicity
         # Cannot directly save model, we need to save state_dict instead
-        # torch.save(kwargs["model"], os.path.join(peft_model_path, "sft_lora_adapter_model.pt"))
+        # torch.save(kwargs["model"], os.path.join(peft_model_path, "pretrain_lora_adapter_model.pt"))
         torch.save(kwargs["model"].state_dict(), os.path.join(args.output_dir, "perf_lora_model_state_dict.pt"))
         kwargs["model"].save_pretrained(peft_model_path)
         print("on_train_end:")
@@ -164,21 +165,17 @@ def main():
         print(f"Adding pad token {DEFAULT_PAD_TOKEN}")
         tokenizer.add_special_tokens(dict(pad_token=DEFAULT_PAD_TOKEN))
     
-    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+    # data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+    data_collector = DataCollatorForLanguageModeling(tokenizer=tokenizer)
     eval_dataset=None
     train_dataset = None
 
     if training_args.do_train:
         with training_args.main_process_first(desc="loading and tokenization"):
             path = Path(data_args.dataset_dir)
-            files = [os.path.join(path, file.name) for file in path.glob("*.json")]
-            logger.info(f"Training files: {' '}.join(files)")
-            train_dataset = build_instruction_dataset(
-                data_path=files,
-                tokenizer=tokenizer,
-                max_seq_length=data_args.max_seq_length,
-                data_cache_dir = None,
-                preprocessing_num_workers = data_args.preprocessing_num_workers)
+            # files = [os.path.join(path, file.name) for file in path.glob("*.json")]
+            # logger.info(f"Training files: {' '}.join(files)")
+            train_dataset = load_dataset(path)
             logger.info(f"Num train_samples  {len(train_dataset)}")
             logger.info("training example:")
             logger.info(tokenizer.decode(train_dataset[0]['input_ids']))
@@ -186,12 +183,7 @@ def main():
         with training_args.main_process_first(desc="loading and tokenization"):
             files = [data_args.validation_file]
             logger.info(f"Evaluation files: {' '.join(files)}")
-            eval_dataset = build_instruction_dataset(
-                data_path=files,
-                tokenizer=tokenizer,
-                max_seq_length=data_args.max_seq_length,
-                data_cache_dir = None,
-                preprocessing_num_workers = data_args.preprocessing_num_workers)
+            eval_dataset = load_dataset(path)
         logger.info(f"Num eval_samples  {len(eval_dataset)}")
         logger.info("eval example:")
         logger.info(tokenizer.decode(eval_dataset[0]['input_ids']))
@@ -246,7 +238,6 @@ def main():
             lora_dropout=lora_dropout,
             modules_to_save=modules_to_save)
         model = get_peft_model(model, peft_config)
-    
 
     model.print_trainable_parameters()
     logger.info(f"model.modules_to_save: {model.modules_to_save}")
