@@ -70,11 +70,21 @@ def get_all_benchmark_token_length(benchmark_dir: str, tokenizer_folder_path: st
                 print(f"{item}: {num_elements // 1024}K") 
 
 
+
+def get_llama_tokenizer_coab():
+    llama_tokenizer_dir="llama_data/cbench_wo_line_no/merged_tokenizer_hf/"
+    llama_tokenizer = CodeLlamaTokenizer.from_pretrained(llama_tokenizer_dir)
+    vocab = llama_tokenizer.get_vocab()
+    print(vocab)
+
+
+
 if __name__ == "__main__":
     # training_record_file_path = "cBench/network_dijkstra/random/llm_training_record.json"
     # training_record_file_path = "cBench/automotive_susan_c/random/llm_training_record.json"
     # training_record_file_path = "cBench/consumer_tiffmedian/random/llm_training_record.json"
     # tokenizer_path = "merged_tokenizer_sp/cbench_ir_llama.model"
     # test_token_length(training_record_file_path, tokenizer_path)
-    test_codellama()
+    # test_codellama()
     # get_all_benchmark_token_length("cBench", "merged_tokenizer_sp/cbench_ir_llama.model")
+    tokenizer, llama = get_codellama_tokenizer_and_model("/home/xiachunwei/Dataset/CodeLlama-7b-hf")

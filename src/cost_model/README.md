@@ -20,6 +20,8 @@ python3 extract_pass_seq_by_latency.py
 ```
 
 ### Merge all the assembly code to one file
+#### We also use this scripts to prepare the pre-train dataset for all arm assembly
+We should use tokenizer to decide how to split the assembly.
 ```shell
 python3 merge_all_file.py
 ```
@@ -91,9 +93,19 @@ The good thing to use LLVM IR is that it is more close to the program and it's s
 
 We need also use LLVM IR to train the cost model.
 
+## Explore OpenAI's API
+
+### Tokenizer
+We can use OpenAI's tokenizer to count how many tokens in our training record.
+refer to [tiktoken](https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken) for more info.
+
+### Embeddings
+We can also get the embeddings for our text by using OpenAI's [Embeddings](https://platform.openai.com/docs/guides/embeddings/what-are-embeddings) API.
+
+
 ## TODO
 Use grpc so we can load the model and tokenizer once,
-and run multiple inference
+and run multiple inference. (Done)
 
 ## TODO
 * Read the Tokenizer code
