@@ -23,9 +23,9 @@ chinese_tokenizer_path=${script_directory}/../llama_data/cbench_wo_line_no/merge
 # dataset_dir=/data/xiachunwei/Dataset/HW-cost-model-dataset/cBench/telecom_adpcm_d/random/
 # 42 location
 # dataset_dir=/home/xiachunwei/Dataset/HW-cost-model-dataset/cBench/telecom_adpcm_d/random/
-dataset_dir=/home/xiachunwei/Dataset/HW-cost-model-dataset/pretrain_cbench_examples/all_benchmark_pre_train.txt
+dataset_dir=/home/xiachunwei/Dataset/HW-cost-model-dataset/pretrain_cbench_examples
 
-per_device_train_batch_size=1
+per_device_train_batch_size=4
 per_device_eval_batch_size=1
 gradient_accumulation_steps=8
 # output_dir=/home/xiachunwei/Dataset/cbench_sft_output_on_full_telecom_adpcm_d/

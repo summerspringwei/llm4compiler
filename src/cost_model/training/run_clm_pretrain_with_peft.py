@@ -37,8 +37,6 @@ from training.sft_args import  (
     MyTrainingArguments
 )
 
-from preprocessing import build_dataset
-
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = "[PAD]"
 DEFAULT_EOS_TOKEN = "</s>"
@@ -166,28 +164,28 @@ def main():
     if tokenizer.pad_token is None:
         print(f"Adding pad token {DEFAULT_PAD_TOKEN}")
         tokenizer.add_special_tokens(dict(pad_token=DEFAULT_PAD_TOKEN))
-    # Note, we add mask token to train language model
-    if tokenizer.mask_token is None:
-        print("Adding mask token <MASK>")
-        special_tokens_dict = {"mask_token": "<MASK>"}
-        num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
+    
     # data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True)
+    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
     eval_dataset=None
     train_dataset = None
 
     if training_args.do_train:
         with training_args.main_process_first(desc="loading and tokenization"):
-            train_dataset = build_dataset.build_pretrain_dataset(data_args.dataset_dir, tokenizer, data_args.max_seq_length)
-            logger.info(f"Num train_samples  {len(train_dataset)}")
-            logger.info("training example:")
-            logger.info(tokenizer.decode(train_dataset[0]['input_ids']))
+            train_dataset = load_dataset(data_args.dataset_dir)
+            train_dataset = train_dataset.map(lambda x: tokenizer.encode(x['text']), batched=True)
+            train_dataset.set_format('torch')
+            # logger.info(f"Num train_samples  {len(train_dataset)}")
+            # logger.info("training example:")
+            # logger.info(tokenizer.decode(train_dataset[0]['input_ids']))
     if training_args.do_eval:
         with training_args.main_process_first(desc="loading and tokenization"):
-            eval_dataset = build_dataset.build_pretrain_dataset(data_args.dataset_dir, tokenizer, data_args.max_seq_length)
-            logger.info(f"Num train_samples  {len(eval_dataset)}")
-            logger.info("training example:")
-            logger.info(tokenizer.decode(eval_dataset[0]['input_ids']))
+            files = [data_args.validation_file]
+            # logger.info(f"Evaluation files: {' '.join(files)}")
+            eval_dataset = load_dataset(files[0])
+        # logger.info(f"Num eval_samples  {len(eval_dataset)}")
+        # logger.info("eval example:")
+        # logger.info(tokenizer.decode(eval_dataset[0]['input_ids']))
 
     if model_args.model_name_or_path:
         torch_dtype = (
@@ -215,6 +213,7 @@ def main():
     if len(tokenizer) != embedding_size:
         logger.info("resize the embedding size by the size of the tokenizer")
         model.resize_token_embeddings(len(tokenizer))
+        # Save old model here
 
     if training_args.peft_path is not None:
         logger.info("Peft from pre-trained model")
@@ -259,8 +258,8 @@ def main():
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
+        train_dataset=train_dataset["train"],
+        eval_dataset=eval_dataset["train"],
         tokenizer=tokenizer,
         data_collator=data_collator,
     )
