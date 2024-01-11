@@ -1,5 +1,0 @@
-transformers
-deepspeed
-peft
-datasets
-SentencePiece
