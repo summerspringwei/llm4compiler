@@ -2,6 +2,15 @@
 
 ## Large Language Model for De-Compilation
 
+### Prepare Env
+
+We provide a docker file to build all the dependencies:
+```shell
+cd docker
+docker build -t llm4compiler:latest .
+```
+It takes 
+
 ### Data Pre-Processing
 
 #### Prepareing the AnghaBench
@@ -16,7 +25,7 @@ Firstly, we compile the source code `*.c` to object file `*.o` using `clang`. e.
 ```shell
 clang -c -g -O0 *.c -o *.o
 ```
-Then we get the corresponding assembly code by using `llvm-objdum`:
+Then we get the corresponding assembly code by using `llvm-objdump`:
 ```shell
 llvm-objdump -s -d --no-addresses --no-show-raw-insn *o
 ```
