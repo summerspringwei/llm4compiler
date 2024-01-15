@@ -42,6 +42,12 @@ Run the following command to get all the object file and assembly file:
 bash run_compile_anghabench.sh
 ```
 
+After compilation, the assembly files (end with `*.s`) will be saved to a folder with the same structure as the source code.
+Then we need to pre-processing the assembly code.
+```shell
+python3 decompilation/preprocessing_assembly.py --dataset_dir path/to/decompilation-dataset/ --dir_name AnghaBench-assembly-g-O2
+```
+
 ### Training
 
 Make sure you have mount the datasets to the docker container.
