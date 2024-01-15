@@ -9,7 +9,11 @@ We provide a docker file to build all the dependencies:
 cd docker
 docker build -t llm4compiler:latest .
 ```
-It takes 
+It takes about an hour to build the dependencies and may vary based on the performance of machine.
+After that, start the docker:
+```shell
+bash run_docker.sh
+```
 
 ### Data Pre-Processing
 
@@ -38,6 +42,23 @@ Run the following command to get all the object file and assembly file:
 bash run_compile_anghabench.sh
 ```
 
+### Training
+
+Make sure you have mount the datasets to the docker container.
+Then start trainig with the following command:
+```shell
+cd path/to/TinyLlama
+
+lightning run model \
+    --node-rank=0  \
+    --main-address=127.0.0.1 \
+    --accelerator=cuda \
+    --devices=1 \
+    --num-nodes=1 \
+    pretrain/tinyllama.py --devices 1 \
+    --train_data_dir /workspace/Dataset/RedPajama-Data-1T-Sample-Bin  \
+    --val_data_dir /workspace/Dataset/RedPajama-Data-1T-Sample-Bin
+```
 
 ## Tips
 
