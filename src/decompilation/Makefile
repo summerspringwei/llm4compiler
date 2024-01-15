@@ -3,7 +3,8 @@
 
 # Compiler and flags
 CC := clang
-CFLAGS := -g -O0
+# CFLAGS := -g -O0
+CFLAGS := -O2
 
 ROOT_DIR := /home/xiachunwei/Dataset/decompilation-dataset/AnghaBench-Sample
 
@@ -20,15 +21,23 @@ OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 ASSEMBLYS := $(patsubst $(SRC_DIR)/%.c,$(ASS_DIR)/%.s,$(SRCS))
 LLS := $(patsubst $(SRC_DIR)/%.c,$(LL_DIR)/%.ll,$(SRCS))
 
+$(info $$LLS is [${LLS}])
+
 # Targets
-all: $(ASSEMBLYS)
+all: $(ASSEMBLYS) $(LLS)
 
 # .PRECIOUS: %.o
-.SECONDARY: $(OBJS)
+.SECONDARY: $(OBJS) $(LLS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+
+$(LL_DIR)/%.ll: $(SRC_DIR)/%.c
+	@mkdir -p $(dir $@)
+	$(info $$@ is [$@])
+	$(CC) $(CFLAGS) -c $< -mllvm -print-after=verify 2> $@
 
 
 $(ASS_DIR)/%.s: $(OBJ_DIR)/%.o
@@ -36,3 +45,5 @@ $(ASS_DIR)/%.s: $(OBJ_DIR)/%.o
 	llvm-objdump -d -S --no-show-raw-insn $< > $@
 
 .PHONY: all
+# clean:
+# 	rm $(ASSEMBLYS) $(LLS)

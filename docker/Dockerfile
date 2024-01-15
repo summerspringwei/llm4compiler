@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:23.04-py3
+FROM nvcr.io/nvidia/pytorch:23.12-py3
 
 # Install dependencies for tiny bert
 WORKDIR /workspace
@@ -13,16 +13,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # This installation is copied from https://github.com/jzhang38/TinyLlama/blob/main/PRETRAIN.md
 
 RUN pip uninstall ninja -y && pip install ninja -U
-RUN MAX_JOBS=8 pip install -v -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
-RUN git clone https://github.com/Dao-AILab/flash-attention
-RUN cd flash-attention \
-    MAX_JOBS=8 python setup.py install \
-    cd csrc/rotary && pip install . \
-    cd ../layer_norm && pip install . \
-    cd ../xentropy && pip install . \
-    cd ../.. && rm -rf flash-attention
+
+
+RUN MAX_JOBS=12 pip install -v -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
+
 
 COPY ./requirements.txt /workspace/requirements.txt
 RUN pip install -r requirements.txt tokenizers sentencepiece
 RUN rm /workspace/requirements.txt
 
+RUN git clone https://github.com/Dao-AILab/flash-attention
+RUN cd flash-attention && \
+    MAX_JOBS=8 python setup.py install && \
+    cd csrc/rotary && pip install . && \
+    cd ../layer_norm && pip install . && \
+    cd ../xentropy && pip install . && \
+    cd ../.. && rm -rf flash-attention
