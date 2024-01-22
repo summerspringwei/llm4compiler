@@ -3,6 +3,7 @@
 import os
 import subprocess
 import json
+import ndjson
 from multiprocessing import Pool
 
 from common import custom_logging
@@ -49,7 +50,7 @@ def preprocess_assembly_dir(asm_dir: str, output_path: str, nproc: int = 32) -> 
     with Pool(nproc) as p:
         output_jsons = p.starmap(pack_assembly_to_json, zip(asm_files_abs, asm_files_relative))
     # Write to json file
-    json.dump(output_jsons, open(output_path, "w"))
+    ndjson.dump(output_jsons, open(output_path, "w"))
     logger.info("Preprocessed {} assembly files are written to {}".format(len(output_jsons), output_path))
 
 

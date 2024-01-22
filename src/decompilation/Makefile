@@ -3,10 +3,10 @@
 
 # Compiler and flags
 CC := clang
-# CFLAGS := -g -O0
-CFLAGS := -O2
+CFLAGS := -g -O0
+# CFLAGS := -g -O2
 
-ROOT_DIR := /home/xiachunwei/Dataset/decompilation-dataset/AnghaBench-Sample
+ROOT_DIR := /data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench
 
 # Directories
 SRC_DIR := $(ROOT_DIR)
@@ -20,6 +20,10 @@ SRCS := $(shell find $(SRC_DIR) -name '*.c')
 OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 ASSEMBLYS := $(patsubst $(SRC_DIR)/%.c,$(ASS_DIR)/%.s,$(SRCS))
 LLS := $(patsubst $(SRC_DIR)/%.c,$(LL_DIR)/%.ll,$(SRCS))
+
+TMP := $(shell mkdir -p $(OBJ_DIR))
+TMP := $(shell mkdir -p $(ASS_DIR))
+TMP := $(shell mkdir -p $(LL_DIR))
 
 $(info $$LLS is [${LLS}])
 
@@ -42,7 +46,7 @@ $(LL_DIR)/%.ll: $(SRC_DIR)/%.c
 
 $(ASS_DIR)/%.s: $(OBJ_DIR)/%.o
 	@mkdir -p $(dir $@)
-	llvm-objdump -d -S --no-show-raw-insn $< > $@
+	llvm-objdump-10 -d -S --no-show-raw-insn $< > $@
 
 .PHONY: all
 # clean:
