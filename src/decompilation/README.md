@@ -42,6 +42,18 @@ Run the following command to get all the object file and assembly file:
 bash run_compile_anghabench.sh
 ```
 
+I provide a Makefile thus we don't need to write python code to compile.
+We can let `make` to manage the compilation/decompilation.
+Simply run the following code:
+
+```shell
+cd src/decompilation
+# modify the compilation flags in Makefile, and then
+make -j -i
+```
+The reason why we pass `-i` to make is that clang failed to compile some files.
+Note, currently we use `clang-15`.
+
 After compilation, the assembly files (end with `*.s`) will be saved to a folder with the same structure as the source code.
 Then we need to pre-processing the assembly code.
 ```shell
@@ -49,6 +61,19 @@ python3 decompilation/preprocessing_assembly.py --dataset_dir path/to/decompilat
 ```
 
 ### Training
+
+#### Convert weight
+Before starting training, we need to convert the huggingface weight (model.layers.x.xxx) to the GPT weights (transformers.h.x.xxx).
+
+```shell
+cd path/to/TinyLlama
+python3 scripts/convert_hf_checkpoint.py --checkpoint_dir /workspace/Dataset/TinyLlama-1.1B-step-50K-105b/ --model_name tiny_LLaMA_1b  --dtype float32
+```
+Then we can initialize the model with the huggingface weights and continue the training process.
+
+Note, the converted weights will be saved in the save to `checkpoint_dir` and named as `lit_model.pth`.
+
+#### Continue Pretrain
 
 Make sure you have mount the datasets to the docker container.
 Then start trainig with the following command:
@@ -65,6 +90,14 @@ lightning run model \
     --train_data_dir /workspace/Dataset/RedPajama-Data-1T-Sample-Bin  \
     --val_data_dir /workspace/Dataset/RedPajama-Data-1T-Sample-Bin
 ```
+
+#### Convert pretrained model to huggingface format
+After pretrain the model, we need to convert the trained GPT model weight (transformers.h.x.xxx) to huggingface (model.layers.x.xxx) so that we can use the transformers `pipeline` to load and run model.
+```shell
+python scripts/convert_lit_checkpoint.py --out_dir out/tinyllama_1b/ --checkpoint_name iter-024000-ckpt.pth --model_name tiny_LLaMA_1b
+```
+
+Note, the converted weights will be saved to the `out_dir` and named as `iter-024000-ckpt.bin`.
 
 ## Tips
 

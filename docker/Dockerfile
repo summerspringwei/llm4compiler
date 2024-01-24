@@ -24,8 +24,16 @@ RUN rm /workspace/requirements.txt
 
 RUN git clone https://github.com/Dao-AILab/flash-attention
 RUN cd flash-attention && \
-    MAX_JOBS=8 python setup.py install && \
+    MAX_JOBS=16 python setup.py install && \
     cd csrc/rotary && pip install . && \
     cd ../layer_norm && pip install . && \
     cd ../xentropy && pip install . && \
     cd ../.. && rm -rf flash-attention
+
+# RUN git clone https://github.com/timdettmers/bitsandbytes.git
+
+# RUN cd bitsandbytes && \
+#     CUDA_VERSION=123 make cuda12x -j && \
+#     python setup.py install
+
+RUN pip install bitsandbytes -U

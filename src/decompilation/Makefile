@@ -2,18 +2,20 @@
 # 
 
 # Compiler and flags
-CC := clang
-CFLAGS := -g -O0
+CC := clang-15
+CFLAGS := -g -O2
+DIS := llvm-objdump-15
 # CFLAGS := -g -O2
 
 ROOT_DIR := /data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench
 
 # Directories
 SRC_DIR := $(ROOT_DIR)
-OBJ_DIR := $(ROOT_DIR)-obj-g-O0
-ASS_DIR := $(ROOT_DIR)-assembly-g-O0
-LL_DIR := $(ROOT_DIR)-ll-g-O0
+OBJ_DIR := $(ROOT_DIR)-obj-g-O2
+ASS_DIR := $(ROOT_DIR)-assembly-g-O2
+LL_DIR := $(ROOT_DIR)-ll-g-O2
 
+DIS_FLAGS := -d --no-show-raw-insn
 
 # Source files
 SRCS := $(shell find $(SRC_DIR) -name '*.c')
@@ -46,7 +48,7 @@ $(LL_DIR)/%.ll: $(SRC_DIR)/%.c
 
 $(ASS_DIR)/%.s: $(OBJ_DIR)/%.o
 	@mkdir -p $(dir $@)
-	llvm-objdump-10 -d -S --no-show-raw-insn $< > $@
+	$(DIS) $(DIS_FLAGS)  $< > $@
 
 .PHONY: all
 # clean:
