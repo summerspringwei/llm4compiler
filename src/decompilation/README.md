@@ -60,6 +60,28 @@ Then we need to pre-processing the assembly code.
 python3 decompilation/preprocessing_assembly.py --dataset_dir path/to/decompilation-dataset/ --dir_name AnghaBench-assembly-g-O2
 ```
 
+#### Tokenize the dataset
+To speed up the training process, we can tokenize the raw text dataset to binary ids.
+edit the `filenames_sample` list in `prepare_redpajama.py`, then
+```shell
+cd path/to/TinyLlama
+python3 scripts/prepare_redpajama.py
+    --source_path path/to/dataset/
+    --checkpoint_dir /path/to/TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T 
+    --destination_path path/to/dataset/bin
+# For example
+python3 scripts/prepare_redpajama.py \
+    --source_path /data0/xiachunwei/Dataset/decompilation-dataset \
+    --checkpoint_dir /data0/xiachunwei/Dataset/TinyLlama-1.1B-step-50K-105b \
+    --destination_path /data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-assembly-g-O0-bin
+
+python3 scripts/prepare_redpajama.py \
+    --source_path /workspace/Dataset/decompilation-dataset \
+    --checkpoint_dir /workspace/Dataset/TinyLlama-1.1B-step-50K-105b \
+    --destination_path /workspace/Dataset/decompilation-dataset/AnghaBench-assembly-g-O0-bin
+
+```
+
 ### Training
 
 #### Convert weight
@@ -98,6 +120,36 @@ python scripts/convert_lit_checkpoint.py --out_dir out/tinyllama_1b/ --checkpoin
 ```
 
 Note, the converted weights will be saved to the `out_dir` and named as `iter-024000-ckpt.bin`.
+
+#### Run the trained weight using huggingface API
+Copy the original huggingface folder, then replace the `pytorch_model.bin` with the converted `bin` (e.g. `iter-024000-ckpt.bin`). Then we can load the model as usual.
+```python
+
+def run_model(model, code):
+    pipeline = transformers.pipeline(
+        "text-generation",
+        model=model,
+        torch_dtype=torch.float16,
+        device_map="auto",
+    )
+    sequences = pipeline(
+        # 'The TinyLlama project aims to pretrain a 1.1B Llama model on 3 trillion tokens. With some proper optimization, we can achieve this within a span of "just" 90 days using 16 A100-40G GPUs 🚀🚀. The training has started on 2023-09-01.',
+        code,
+        do_sample=True,
+        top_k=10,
+        num_return_sequences=1,
+        repetition_penalty=1.5,
+        eos_token_id=tokenizer.eos_token_id,
+        max_length=2048,
+    )
+    for seq in sequences:
+        print(f"Result: {seq['generated_text']}")
+
+
+if __name__=="__main__":
+    run_model("/workspace/Dataset/TinyLlama-1.1B-C-assembly/", code)
+
+```
 
 ## Tips
 

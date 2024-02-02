@@ -7,6 +7,7 @@ import ndjson
 from multiprocessing import Pool
 
 from common import custom_logging
+from common import preprocessing_utils
 
 logger = custom_logging.get_custom_logger()
 
@@ -37,13 +38,7 @@ def pack_assembly_to_json(asm_file: str, relative_path: str) -> None:
 
 
 def preprocess_assembly_dir(asm_dir: str, output_path: str, nproc: int = 32) -> None:
-    # Get all assembly files
-    if not os.path.exists(asm_dir):
-        logger.error("Directory {} does not exist.".format(asm_dir))
-        return
-    cmd_process  = subprocess.Popen(["find", ".", "-name", '*.s'], cwd=asm_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    cmd_stdout, cmd_stderr = cmd_process.communicate()
-    asm_files_relative = cmd_stdout.decode("utf-8").split("\n")
+    asm_files_relative = preprocessing_utils.get_all_files_with_extension(asm_dir, "s")
     asm_files_abs = [os.path.join(asm_dir, asm_file) for asm_file in asm_files_relative if asm_file != ""]
 
     # Preprocess each assembly file
@@ -52,14 +47,6 @@ def preprocess_assembly_dir(asm_dir: str, output_path: str, nproc: int = 32) -> 
     # Write to json file
     ndjson.dump(output_jsons, open(output_path, "w"))
     logger.info("Preprocessed {} assembly files are written to {}".format(len(output_jsons), output_path))
-
-
-def load_json(file_path: str) -> str:
-    with open(file_path, "r") as f:
-        json_obj = json.load(f)
-        for obj in json_obj:
-            print(obj)
-        return json_obj
 
 
 def test():
@@ -71,7 +58,7 @@ def main(
     dataset_dir = "/home/xiachunwei/Dataset/decompilation-dataset/",
     dir_name = "AnghaBench-assembly-g-O2") -> None:
     asm_dir = os.path.join(dataset_dir, dir_name)
-    asm_json_path = os.path.join(dataset_dir, dir_name + ".json")
+    asm_json_path = os.path.join(dataset_dir, os.path.normpath(dir_name) + ".json")
     preprocess_assembly_dir(asm_dir, asm_json_path)
     # assembly_jsons = load_json(asm_json_path)
     # for assembly_json in assembly_jsons:
