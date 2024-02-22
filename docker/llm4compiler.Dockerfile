@@ -24,3 +24,4 @@ RUN cd flash-attention \
 
 COPY ./requirements.txt /workspace/requirements.txt
 RUN pip install -r requirements.txt tokenizers sentencepiece
+RUN pip install evaluate sacrebleu

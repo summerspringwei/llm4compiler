@@ -151,6 +151,39 @@ if __name__=="__main__":
 
 ```
 
+
+## Train with alpaca-lora
+We have tried to use the [alpaca-lora](https://github.com/tloen/alpaca-lora) and fine-tune on [CodeLlama](https://huggingface.co/codellama/CodeLlama-7b-hf).
+The code is at [alpaca-lora-decompilation](https://github.com/summerspringwei/alpaca-lora-decompilation.git).
+
+
+Run the fine-tune:
+```shell
+cd path/to/alpaca-lora-decompilation
+bash run_finetune.sh
+```
+
+Run inference:
+```shell
+cd path/to/alpaca-lora-decompilation
+
+export CUDA_VISIBLE_DEVICES=3 && python3 run_generate.py \
+    --base_model '/data0/xiachunwei/Dataset/CodeLlama-7b-hf' \
+    --lora_weights './decompile_alphaca_lora' \
+    --val_file '/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench_instruct_train_paired_assembly-g-O2_C_2K_sample_tail1K.json' \
+    --result_file "./mayval/result_AnghaBench_instruct_train_paired_assembly-g-O2_C_2K_sample_tail1K_our_lora.json" | tee ./mayval/val_tail1K_our_lora.log
+
+```
+
+Compile llvm ir to assembly
+```shell
+python3 compile_AnghaBench.py
+```
+
+Pair llvm ir and assembly
+
+
+
 ## Tips
 
 Dump the LLVM IR after certain pass:
@@ -163,5 +196,17 @@ We can also get the llvm IR for a specific pass:
 ```shell
 clang -c -g -mllvm -print-after=verify *.o
 ```
+
+Add optimization level and dump IR
+```shell
+clang -mllvm -print-after=pre-isel-intrinsic-lowering -c test.c -O2 > test.ll
+```
+
+Then compile the llvm IR to assembly:
+```shell
+llc test.ll 
+```
+This will produce the `test.s`.
+
 We can get the llvm IR before the instruction selection phase.
 Maybe it's helpful for the training.

@@ -182,4 +182,6 @@ cbench_arm64_assembly_with_line_no.vocab
 cBench/
 cbench_sft_output/
 all_assembly_with_line_no.txt
-src/data/
+*.s
+*.ll
+*.o
