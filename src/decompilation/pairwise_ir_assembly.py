@@ -1,8 +1,10 @@
 import os
-from pathlib import Path
-from multiprocessing import Pool
 import json
 import pickle
+import subprocess
+from pathlib import Path
+from multiprocessing import Pool
+
 
 import fire
 import transformers
@@ -10,9 +12,54 @@ from transformers import AutoTokenizer
 
 from common import custom_logging
 from common import preprocessing_utils
-
+from common import draw
 
 logger = custom_logging.get_custom_logger()
+
+
+def compile_llc(llvm_ir_file, assembly_file):
+    args = ["llc", llvm_ir_file, "-o", assembly_file]
+    return subprocess.run(args)
+
+
+def compile_llvm_ir_to_assembly(llvm_ir_dir: str,
+                                llc_assembly_dir: str,
+                                llvm_ir_suffix: str = "ll",
+                                assembly_suffix: str = "s",
+                                nproc=1):
+    """
+    Compile the ANG benchmark.
+    """
+    llvm_ir_files_relative = preprocessing_utils.get_all_files_with_extension(
+        llvm_ir_dir, llvm_ir_suffix)
+    llvm_ir_files_abs = [
+        os.path.join(llvm_ir_dir, llvm_ir_file)
+        for llvm_ir_file in llvm_ir_files_relative if llvm_ir_file != ""
+    ]
+    assembly_files_abs = [
+        os.path.join(llc_assembly_dir,
+                     llvm_ir_file[:-len(llvm_ir_suffix)] + assembly_suffix)
+        for llvm_ir_file in llvm_ir_files_relative if llvm_ir_file != ""
+    ]
+
+    # Get all directories
+    all_dirs = set()
+    for llvm_ir_file in llvm_ir_files_abs:
+        all_dirs.add(os.path.dirname(llvm_ir_file))
+    print(all_dirs)
+    for d in all_dirs:
+        d = d.replace(llvm_ir_dir, llc_assembly_dir)
+        Path(d).mkdir(parents=True, exist_ok=True)
+
+    args = [(llvm_ir_file, assembly_file) for llvm_ir_file, assembly_file in
+            zip(llvm_ir_files_abs, assembly_files_abs)]
+
+    with Pool(nproc) as p:
+        outputs_lists = p.starmap(compile_llc, args)
+        for output in outputs_lists:
+            if output.returncode != 0:
+                print(output)
+
 
 
 def tokenize_text(text: str, tokenizer: transformers.AutoTokenizer) -> list:
@@ -95,8 +142,49 @@ def main(
     pairwise_ir_assembly(llvm_ir_dir, llc_assembly_dir, dst_json_path, dst_pickle_path, tokenizer, nproc=nproc)
 
 
+def limit_Length_and_draw_llvm_ir_and_assembly(llvm_ir_assembly_data_path: str, json_less: str, length_threshold: int = 1024 * 6):
+    data = json.load(open(llvm_ir_assembly_data_path, 'r'))
+    assembly_length_list = []
+    llvm_ir_length_list = []
+    total_length_list = []
 
+    json_less_data = []
+    for record in data:
+        assembly_length_list.append(record["assembly_length"])
+        llvm_ir_length_list.append(record["llvm_ir_length"])
+        total_length = record["assembly_length"] + record["llvm_ir_length"]
+        total_length_list.append(total_length)
+        if total_length < length_threshold:
+            json_less_data.append(record)
+    
+    
+    draw.draw_length_distribution(assembly_length_list, "AnghaBench-llc-assembly_length_distribution.png")
+    draw.draw_length_distribution(llvm_ir_length_list, "AnghaBench-llvm_ir_length_distribution.png")
+    draw.draw_length_distribution(total_length_list, "AnghaBench-total_length_distribution.png")
+    json.dump(json_less_data, open(json_less, 'w'), indent=4, sort_keys=True, separators=(',', ': '))
 
-
+def prepare_chat(in_json: str, out_json: str):
+    in_data =json.load(open(in_json, 'r'))
+    out_data = []
+    for record in in_data:
+        out_record = {
+                "file:": record["file:"],
+                "input": record["assembly"],
+                "output": record["llvm_ir"],
+                "instruction": "decompile the x86 assembly to llvm ir"
+                }
+        out_data.append(out_record)
+    json.dump(out_data, open(out_json, 'w'), indent=4, sort_keys=True, separators=(',', ': ') )
 if __name__=="__main__":
-    fire.Fire(main)
+    # compile_llvm_ir_to_assembly(
+    #  "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-ll-O2",
+    # "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llc-assembly-O2",
+    # nproc=32)
+    # fire.Fire(main)
+    # limit_Length_and_draw_llvm_ir_and_assembly(
+    #     "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2.json",
+    #     "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2-seq_length-4K.json",
+    #     length_threshold=1024*4)
+    prepare_chat("/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2-seq_length-4K.json",
+            "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2-seq_length-4K_chat.json")
+

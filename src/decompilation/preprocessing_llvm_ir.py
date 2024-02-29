@@ -46,7 +46,7 @@ def extract_llvm_ir_inplace(llvm_ir_file: str) -> str:
     with open(llvm_ir_file, 'r') as f:
         lines = f.readlines()
         for idx, line in zip(range(len(lines)), lines):
-            if "*** IR Dump After" in line:
+            if "*** IR Dump After" in line or line.startswith("source_filename"):
                 start = idx+1
             if "warning generated." in line or "warnings generated." in line:
                 end = idx
