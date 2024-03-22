@@ -185,3 +185,4 @@ all_assembly_with_line_no.txt
 *.s
 *.ll
 *.o
+*.pkl
