@@ -183,6 +183,20 @@ python3 compile_AnghaBench.py
 Pair llvm ir and assembly
 
 
+### Merge peft weights to llama and using vllm or tgi to serve
+Once we finished fine-tuning model by using PEFT, we can load the base model and then load peft weights to run inference.
+Refer to `alphaca-lora/run_generate.py` and `alphaca-lora/run_generate.sh` for details.
+However, Using peft model to run inference is inefficient.
+Using vllm or tgi can boost the performance but these frameworks typically only support base models like Llama.
+In this way, we need to merge the weights of peft adapters to the base model.
+We can achieve this by simply running the following command:
+```bash
+python3 merge_peft_weights_to_llama.py \
+    --base_model "/data0/xiachunwei/Dataset/CodeLlama-7b-hf" \
+    --merged_model "/data0/xiachunwei/Dataset/CodeLlama-7b-hf_merged_lora" \
+    --peft_weight_dir "./decompile_llvm_ir_alphaca_lora_seq_len_4k_with_flashattn_maybe_wrong/checkpoint-4100"
+```
+Then we can use vllm to serve the model.
 
 ## Tips
 
