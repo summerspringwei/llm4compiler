@@ -9,7 +9,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/WithColor.h"
 #include <iostream>
-
+#include <sstream>
 
 using namespace llvm;
 
@@ -35,13 +35,31 @@ int main(int argc, char **argv) {
     if (!M) {
         return 1;
     }
-
-    int bb_count = 0;
+    
+    
+    std::stringstream ss;
     for (auto &F : *M) {
+        int bb_count = 0;
         bb_count += F.size();
+        if (bb_count > 0){
+            size_t *bb_size_list = new size_t[F.size()];
+            int idx = 0;
+            for (auto &BB : F) {
+                bb_size_list[idx++] = BB.size();
+            }
+            
+            ss << "{" << "\"func_name\"" << ": \"" << F.getName().str() << "\" ,";
+            ss << "\"bbcount\"" << ":" << bb_count << "," << "\"bb_list_size\"" << ": [";
+            for(int i=0; i<F.size(); i++) {
+                ss << bb_size_list[i];
+                if(i != F.size()-1) {
+                    ss << ",";
+                }
+            }ss << "]}\n";
+        }
     }
-
+        
     // WithColor::note() << "bbcount: " << bb_count << "\n";
-    printf("%d\n", bb_count);
+    printf("%s\n", ss.str().c_str());
     return 0;
 }
