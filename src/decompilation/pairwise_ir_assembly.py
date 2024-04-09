@@ -156,18 +156,6 @@ def analyze_or_tokenize_ir_assembly(ir_assembly_path: str,
         pickle.dump(tokenized_record_all, open(dst_pickle_path, 'wb'))
 
 
-def main(
-    ir_assembly_path = "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2-content.json",
-    dst_json_path = "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2.json",
-    dst_pickle_path = "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2.pkl",
-    model_path = "/data0/xiachunwei/Dataset/CodeLlama-7b-hf",
-    nproc=40
-):
-    
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    analyze_or_tokenize_ir_assembly(ir_assembly_path, dst_json_path, dst_pickle_path, tokenizer, nproc=nproc, save_tokenized=False)
-
-
 def filter_record(record: dict, length_threshold: int = 0, bb_count_threshold: int = 0, average_bb_size: float = 1) -> bool:
     """Filter the llvm ir record, return true if the record is valid else return false.
 
@@ -235,28 +223,37 @@ def prepare_chat(in_json: str, out_json: str):
     json.dump(out_data, open(out_json, 'w'), indent=4, sort_keys=True, separators=(',', ': ') )
 
 
-if __name__=="__main__":
-    # compile_llvm_ir_to_assembly(
-    #  "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-ll-O2",
-    # "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llc-assembly-O2",
-    # nproc=32)
-    # dataset_dir = "/data0/xiachunwei/Dataset/decompilation-dataset/"
-    # merge_ir_assembly_to_json(llvm_ir_dir = os.path.join(dataset_dir, "AnghaBench-ll-O2"),
-    #     llc_assembly_dir = os.path.join(dataset_dir, "AnghaBench-llc-assembly-O2"),
-    #     output_path = os.path.join(dataset_dir, "AnghaBench-llvm-ir-llc-assembly-O2-content.json"))
-    ir_assembly_path = "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2-content.json"
-    dst_json_path = "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2.json"
-    dst_pickle_path = "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2.pkl"
+def main():
+    dataset_dir = "/data0/xiachunwei/Dataset/decompilation-dataset/"
+    llvm_ir_dir = os.path.join(dataset_dir, "AnghaBench-ll-O2")
+    llc_assembly_dir = os.path.join(dataset_dir, "AnghaBench-llc-assembly-O2")
+    merged_output_path = os.path.join(dataset_dir, "AnghaBench-llvm-ir-llc-assembly-O2-content.json")
+    dst_json_path = os.path.join(dataset_dir, "AnghaBench-llvm-ir-llc-assembly-O2.json")
+    dst_pickle_path = os.path.join(dataset_dir, "AnghaBench-llvm-ir-llc-assembly-O2.pkl")
     model_path = "/data0/xiachunwei/Dataset/CodeLlama-7b-hf"
-    nproc=80
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    analyze_or_tokenize_ir_assembly(ir_assembly_path, dst_json_path, dst_pickle_path, tokenizer, nproc=nproc, save_tokenized=False)
-    # fire.Fire(main)
+    filtered_path = os.path.join(dataset_dir, "AnghaBench-llvm-ir-llc-assembly-O2-seq_length-4K-bbcount-2-average-2.json")
+    chat_json_path = os.path.join(dataset_dir, "AnghaBench-llvm-ir-llc-assembly-O2-seq_length-4K_bbcount-2-average-2_chat.json")
+    nproc=40
+    # compile_llvm_ir_to_assembly(
+    # llvm_ir_dir,
+    # llc_assembly_dir,
+    # nproc=nproc)
+    
+    # merge_ir_assembly_to_json(llvm_ir_dir,
+    #     llc_assembly_dir,
+    #     output_path = merged_output_path)
+    
+    # tokenizer = AutoTokenizer.from_pretrained(model_path)
+    # analyze_or_tokenize_ir_assembly(merged_output_path, dst_json_path, dst_pickle_path, tokenizer, nproc=nproc, save_tokenized=False)
     # limit_Length_and_bb_count_and_draw_llvm_ir_and_assembly(
-    #     "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2.json",
-    #     "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2-seq_length-4K-bbcount-2.json",
+    #     dst_json_path,
+    #     filtered_path,
     #     length_threshold=1024*4,
-    #     bb_count_threshold=2)
-    # prepare_chat("/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2-seq_length-4K-bbcount-2.json",
-    #         "/data0/xiachunwei/Dataset/decompilation-dataset/AnghaBench-llvm-ir-llc-assembly-O2-seq_length-4K_bbcount-2_chat.json")
+    #     bb_count_threshold=2,
+    #     average_bb_size=2.0)
+    prepare_chat(filtered_path,
+            chat_json_path)
 
+
+if __name__=="__main__":
+    main()

@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     
-    
+
     std::stringstream ss;
     for (auto &F : *M) {
         int bb_count = 0;
