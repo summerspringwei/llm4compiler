@@ -14,10 +14,11 @@ add_definitions(${LLVM_DEFINITIONS})
 
 
 add_executable(count_llvm_ir_bb count_llvm_ir_bb.cpp)
+add_executable(extract_cpp_functions extract_cpp_functions.cpp)
 
 llvm_map_components_to_libnames(llvm_libs core support)
 target_link_libraries(count_llvm_ir_bb ${llvm_libs} ${CLANG_LIBS})
-
+target_link_libraries(extract_cpp_functions ${llvm_libs} ${CLANG_LIBS})
 
 
 target_link_libraries(count_llvm_ir_bb
