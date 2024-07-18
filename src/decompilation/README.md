@@ -198,6 +198,19 @@ python3 merge_peft_weights_to_llama.py \
 ```
 Then we can use vllm to serve the model.
 
+## Filter redundant functions in AnghaBench
+Our idea is we first sort the code according to the number of tokens.
+Then we compare the function if the number of tokens are the same and the function name is also the same,
+then it's likely that the two record are the same.
+Run the following cmd:
+
+```shell
+python3 decompilation/filter_redundant_angha.py
+```
+`AnghaBench-llvm-ir-llc-assembly-O2-seq_length-16K_bbcount-2-average-2_chat_train_sort`
+the results are saved in `AnghaBench-llvm-ir-llc-assembly-O2-seq_length-16K_bbcount-2-average-2_chat_train_sort_filtered`
+After remove the redundant records, we reduce the dataset from 602377 to 534948.
+
 ## Tips
 
 Dump the LLVM IR after certain pass:
@@ -224,3 +237,9 @@ This will produce the `test.s`.
 
 We can get the llvm IR before the instruction selection phase.
 Maybe it's helpful for the training.
+
+
+LLVM dump the dot / graph file of a module:
+```shell
+opt -dot-cfg -disable-output -enable-new-pm=0 test.ll
+```

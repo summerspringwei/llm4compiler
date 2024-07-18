@@ -21,6 +21,7 @@ foo.s:30:2: note: parsed instruction: [movss, Memory: ModeSize=64,BaseReg=rbp,Sc
 
 
 import re
+from typing import List
 
 
 def extract_function_call(call_inst: str):
@@ -33,7 +34,7 @@ def extract_function_call(call_inst: str):
     return None
 
 
-def extract_asm_info(f):
+def extract_asm_info(f: List[str]) -> List[str]:
     called_functions = []
     for line in f:
         match = re.search(r'parsed instruction: \[(.*?)\]', line)

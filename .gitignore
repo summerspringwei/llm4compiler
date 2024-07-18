@@ -186,3 +186,6 @@ all_assembly_with_line_no.txt
 *.ll
 *.o
 *.pkl
+test.c
+test.ll
+test.s

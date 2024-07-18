@@ -1,7 +1,7 @@
 
 
 typedef struct {
-    int a;
+    double a;
     int b;
 } my_struct;
 
