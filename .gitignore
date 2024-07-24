@@ -189,3 +189,5 @@ all_assembly_with_line_no.txt
 test.c
 test.ll
 test.s
+a.out
+learn.cpp

@@ -13,8 +13,71 @@
 #include <iostream>
 #include <sstream>
 #include <set>
+#include <unordered_map>
 
 using namespace llvm;
+
+
+class IntegerRange {
+private:
+    int start;
+    int end;
+
+public:
+    // Constructor
+    IntegerRange(unsigned start, unsigned end) {
+        if (start > end) {
+            throw std::invalid_argument("Start should not be greater than end.");
+        }
+        this->start = start;
+        this->end = end;
+    }
+
+    IntegerRange() : start(102400), end(0) {}
+
+    IntegerRange(const IntegerRange &other) : start(other.start), end(other.end) {}
+
+    IntegerRange& operator=(const IntegerRange& other) {
+        if (this != &other) {
+            this->start = other.start;
+            this->end = other.end;
+        }
+        return *this;
+    }
+
+    // Getters
+    unsigned getStart() const {
+        return start;
+    }
+
+    unsigned getEnd() const {
+        return end;
+    }
+
+    bool insert(unsigned value) {
+        if (value < start) {
+            start = value;
+            return true;
+        } else if (value > end) {
+            end = value;
+            return true;
+        }
+        return false;
+    }
+
+    // Member function to check if a number is within the range
+    bool contains(unsigned value) const {
+        return value >= start && value <= end;
+    }
+
+    // Member function to print the range
+    std::string rangeStr() {
+        std::stringstream ss;
+        ss << "[" << start << ", " << end << "]";
+        return ss.str();
+    }
+
+};
 
 static std::unique_ptr<Module> readModule(LLVMContext &Context, StringRef Name) {
     SMDiagnostic Err;
@@ -84,16 +147,15 @@ const DILexicalBlock *getTopLevelLexicalBlock(const DIScope *Scope, const DISubp
     return nullptr;
 }
 
-void getDbgOfBBs(std::unique_ptr<Module> M){
-    const llvm::DISubprogram* subprogram;
-    bool findSubprogram = false;
+void getDIOfBBs(std::unique_ptr<Module> M){
+    const llvm::DISubprogram* subprogram = nullptr;
     // 1. Get the DISubprogram of the function
-    for (auto &F : *M) {
+    for (auto &F : *M) { // Note, here we assume there is only one function in the module
+        bool findSubprogram = false;
         for(auto &BB : F){
             for(auto &I : BB){
                 if (DILocation *Loc = I.getDebugLoc()){
-                    subprogram = getDISubprogram(Loc->getScope());
-                    if (subprogram) {
+                    if ((subprogram = getDISubprogram(Loc->getScope()))) {
                         errs() << "Subprogram: " << subprogram->getName() << "\n";
                         findSubprogram = true;
                         break;
@@ -105,25 +167,60 @@ void getDbgOfBBs(std::unique_ptr<Module> M){
             }
         }
     }
+    if (!subprogram){
+        throw std::runtime_error("Cannot find the DISubprogram of the function");
+    }
     // 2. Get the top-level DILexicalBlock of the function    
+    // Record each basic blocks's top-level DILexicalBlock
+    // if a BB has multiple top-level DILexicalBlock, we need to report an error
+    // otherwise, what we should do is to record the top-level DILexicalBlock of each BB
+    // We also extract the range of DILexicalBlock in the source file  
+    std::unordered_map<const BasicBlock*, const DILexicalBlock*> bbToLexicalBlock;
+    std::unordered_map<const DILexicalBlock*, IntegerRange> lexicalBlockToRange;
+
     std::set<const DILexicalBlock*> topLevelBlocks;
     for (auto &F : *M) {
         for(auto &BB : F){
             for(auto &I : BB){
-                if (DILocation *Loc = I.getDebugLoc()){
-                    auto* result = getTopLevelLexicalBlock(Loc->getScope(), subprogram);
-                    if(result){
-                        topLevelBlocks.insert(result);
+                DILocation *Loc = nullptr;
+                if ((Loc = I.getDebugLoc()) && !isLlvmDbgCallInst(I)){
+                    // const DILexicalBlock * lexical_block = nullptr;
+                    const DILexicalBlock * top_lexical_block = nullptr;
+                    if((top_lexical_block = getTopLevelLexicalBlock(Loc->getScope(), subprogram))){
+                        //TODO(Chunwei) Compute the range here
+                        if(lexicalBlockToRange.find(top_lexical_block) == lexicalBlockToRange.end()){
+                            // lexicalBlockToRange[top_lexical_block] = IntegerRange(Loc->getLine(), Loc->getLine());
+                            errs() << "Create range" << Loc->getLine() << "\n";
+                            lexicalBlockToRange.insert({top_lexical_block, IntegerRange(Loc->getLine(), Loc->getLine())});
+                        }else{
+                            lexicalBlockToRange[top_lexical_block].insert(Loc->getLine());
+                            errs() << "Update range" << Loc->getLine() << "\n";
+                        }
+                        // topLevelBlocks.insert(top_lexical_block);
+                        if(bbToLexicalBlock.find(&BB) != bbToLexicalBlock.end() && bbToLexicalBlock[&BB] != top_lexical_block){
+                            throw std::runtime_error("The BB has multiple top-level DILexicalBlock");
+                        }else{
+                            bbToLexicalBlock[&BB] = top_lexical_block;
+                        }
                     }
                 }
             }
         }
     }
-    errs() << "num of toplevel bb:" << topLevelBlocks.size() << "\n";
-    for(auto* b: topLevelBlocks){
-        errs() << b->getLine() << "\n";
+
+    errs() << "num of toplevel bb:" << lexicalBlockToRange.size() << "\n";
+    for(auto b: lexicalBlockToRange){
+        errs() << b.first->getLine() << b.second.rangeStr() << "\n";
     }
-    // 3. Check whether all the instruction of a BasicBlock belongs to the same top-level DILexicalBlock
+    for (auto &F : *M) {
+        for(auto &BB : F){
+            if (bbToLexicalBlock.find(&BB) == bbToLexicalBlock.end()){
+                errs() << "BB without top-level DILexicalBlock: " << BB << "\n";
+            }else{
+                errs() << BB << "\n ^^^" << bbToLexicalBlock[&BB]->getLine() << "to" << "bbToLexicalBlock[&BB]->getScopeLine()" << "^^^\n";
+            }
+        }
+    }
 }
 
 
@@ -136,40 +233,6 @@ int main(int argc, char **argv) {
     if (!M) {
         return 1;
     }
-    // We need to first strip the `call void @llvm.dbg.value`
-    // for (auto &F : *M) {
-    //     for(auto &BB : F){
-    //         // Firstly, we try to get the first and last instruction's debug info in a basic block
-    //         if (BB.empty()){
-    //             continue;
-    //         }
-    //         if (BB.size() == 1){
-    //             llvm::Instruction* I = &(BB.front());
-    //             auto line = getInstLoc(*I);
-    //             if (line) {
-    //                 errs() << "BB with one Instruction: " << *I << "\t" << line << "\n";
-    //             }
-    //         }else{
-    //             llvm::Instruction* start_inst_ptr=NULL;
-    //             llvm::Instruction* end_inst_ptr=NULL;
-    //             for (auto& inst : BB){
-    //                 if (! isLlvmDbgCallInst(inst) && start_inst_ptr == NULL){
-    //                     start_inst_ptr = &inst;
-    //                     break;
-    //                 }
-    //             }
-    //             errs() << "BB with more Instruction: " << *start_inst_ptr << "\t" << getInstLoc(*start_inst_ptr) << "\n";
-    //             // auto& end = BB.
-    //             if (DILocation *Loc = (*start_inst_ptr).getDebugLoc()) {
-    //                 DIScope *Scope = Loc->getScope();
-    //                 getDISubprogram(Scope);
-    //                 // if (DILexicalBlock *LB = dyn_cast<DILexicalBlock>(Scope)) {
-    //                 //     getRootScope(LB);
-    //                 // }
-    //             }
-    //         }
-    //     }
-    // }
-    getDbgOfBBs(std::move(M));
+    getDIOfBBs(std::move(M));
     return 0;
 }
